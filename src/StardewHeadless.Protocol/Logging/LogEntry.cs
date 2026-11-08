@@ -35,6 +35,18 @@ public class LogEntry
     {
         return JsonSerializer.Serialize(this, LogJsonContext.DefaultOptions);
     }
+
+    public static LogEntry? FromJson(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<LogEntry>(json, LogJsonContext.DefaultOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
 
 public static class LogJsonContext

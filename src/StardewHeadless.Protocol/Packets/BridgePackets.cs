@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using StardewHeadless.Protocol.Enums;
 
@@ -28,6 +29,7 @@ public class ClientHelloPacket : BridgePacket
     public long FarmerId { get; set; }
     public string ClientName { get; set; } = string.Empty;
     public string BridgeVersion { get; set; } = "1.0.0";
+    public string? SessionToken { get; set; }
 
     public override void WritePayload(BinaryWriter writer)
     {
@@ -35,6 +37,10 @@ public class ClientHelloPacket : BridgePacket
         writer.Write(FarmerId);
         writer.Write(ClientName);
         writer.Write(BridgeVersion);
+        if (!string.IsNullOrEmpty(SessionToken))
+        {
+            writer.Write(SessionToken);
+        }
     }
 
     public override void ReadPayload(BinaryReader reader)
@@ -43,6 +49,10 @@ public class ClientHelloPacket : BridgePacket
         FarmerId = reader.ReadInt64();
         ClientName = reader.ReadString();
         BridgeVersion = reader.ReadString();
+        if (reader.BaseStream.Position < reader.BaseStream.Length)
+        {
+            SessionToken = reader.ReadString();
+        }
     }
 }
 
@@ -439,6 +449,7 @@ public class ClientModInfo
     public string ModName { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;
     public bool HasBinary { get; set; }
+    public string DllSha256 { get; set; } = string.Empty;
 }
 
 public class ClientModAuditPacket : BridgePacket
@@ -460,6 +471,7 @@ public class ClientModAuditPacket : BridgePacket
             writer.Write(mod.ModName);
             writer.Write(mod.Version);
             writer.Write(mod.HasBinary);
+            writer.Write(mod.DllSha256 ?? string.Empty);
         }
     }
 
@@ -467,17 +479,19 @@ public class ClientModAuditPacket : BridgePacket
     {
         FarmerId = reader.ReadInt64();
         HwidHash = reader.ReadString();
-        int count = reader.ReadInt32();
+        int count = Math.Clamp(reader.ReadInt32(), 0, 512);
         InstalledMods = new List<ClientModInfo>(count);
         for (int i = 0; i < count; i++)
         {
-            InstalledMods.Add(new ClientModInfo
+            var info = new ClientModInfo
             {
                 ModId = reader.ReadString(),
                 ModName = reader.ReadString(),
                 Version = reader.ReadString(),
-                HasBinary = reader.ReadBoolean()
-            });
+                HasBinary = reader.ReadBoolean(),
+                DllSha256 = reader.ReadString()
+            };
+            InstalledMods.Add(info);
         }
     }
 }
@@ -502,5 +516,279 @@ public class ClientModAuditResponsePacket : BridgePacket
         FarmerId = reader.ReadInt64();
         IsAllowed = reader.ReadBoolean();
         RejectionReason = reader.ReadString();
+    }
+}
+
+public class HarmonyPatchAnomaly
+{
+    public string MethodName { get; set; } = string.Empty;
+    public string PatchOwnerId { get; set; } = string.Empty;
+    public string PatchAssemblyName { get; set; } = string.Empty;
+}
+
+public class ClientIntegrityHeartbeatPacket : BridgePacket
+{
+    public override byte SubOpCode => ProtocolConstants.SubOpCodes.ClientIntegrityHeartbeat;
+
+    public long FarmerId { get; set; }
+    public long TimestampTicks { get; set; }
+    public string Nonce { get; set; } = string.Empty;
+    public string Signature { get; set; } = string.Empty;
+    public List<HarmonyPatchAnomaly> DetectedPatches { get; set; } = new();
+
+    public override void WritePayload(BinaryWriter writer)
+    {
+        writer.Write(FarmerId);
+        writer.Write(TimestampTicks);
+        writer.Write(Nonce);
+        writer.Write(Signature);
+        writer.Write(DetectedPatches.Count);
+        foreach (var p in DetectedPatches)
+        {
+            writer.Write(p.MethodName ?? string.Empty);
+            writer.Write(p.PatchOwnerId ?? string.Empty);
+            writer.Write(p.PatchAssemblyName ?? string.Empty);
+        }
+    }
+
+    public override void ReadPayload(BinaryReader reader)
+    {
+        FarmerId = reader.ReadInt64();
+        TimestampTicks = reader.ReadInt64();
+        Nonce = reader.ReadString();
+        Signature = reader.ReadString();
+        int count = Math.Clamp(reader.ReadInt32(), 0, 512);
+        DetectedPatches = new List<HarmonyPatchAnomaly>(count);
+        for (int i = 0; i < count; i++)
+        {
+            DetectedPatches.Add(new HarmonyPatchAnomaly
+            {
+                MethodName = reader.ReadString(),
+                PatchOwnerId = reader.ReadString(),
+                PatchAssemblyName = reader.ReadString()
+            });
+        }
+    }
+
+    public static string ComputeSignature(long farmerId, long timestampTicks, string nonce, string secretKey = "StardewBridgeDefaultKey")
+    {
+        string payload = $"{farmerId}:{timestampTicks}:{nonce}";
+        byte[] keyBytes = Encoding.UTF8.GetBytes(string.IsNullOrEmpty(secretKey) ? "StardewBridgeDefaultKey" : secretKey);
+        byte[] payloadBytes = Encoding.UTF8.GetBytes(payload);
+
+        using var hmac = new HMACSHA256(keyBytes);
+        byte[] hash = hmac.ComputeHash(payloadBytes);
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    public bool VerifySignature(string secretKey = "StardewBridgeDefaultKey")
+    {
+        string expected = ComputeSignature(FarmerId, TimestampTicks, Nonce, secretKey);
+        return string.Equals(expected, Signature, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+public class ClientIntegrityHeartbeatAckPacket : BridgePacket
+{
+    public override byte SubOpCode => ProtocolConstants.SubOpCodes.ClientIntegrityHeartbeatAck;
+
+    public long FarmerId { get; set; }
+    public bool IsValid { get; set; }
+    public int ActiveStrikes { get; set; }
+
+    public override void WritePayload(BinaryWriter writer)
+    {
+        writer.Write(FarmerId);
+        writer.Write(IsValid);
+        writer.Write(ActiveStrikes);
+    }
+
+    public override void ReadPayload(BinaryReader reader)
+    {
+        FarmerId = reader.ReadInt64();
+        IsValid = reader.ReadBoolean();
+        ActiveStrikes = reader.ReadInt32();
+    }
+}
+
+public class SkullElevatorUseRequestPacket : BridgePacket
+{
+    public override byte SubOpCode => ProtocolConstants.SubOpCodes.SkullElevatorUseRequest;
+
+    public long FarmerId { get; set; }
+    public int TargetFloor { get; set; }
+
+    public override void WritePayload(BinaryWriter writer)
+    {
+        writer.Write(FarmerId);
+        writer.Write(TargetFloor);
+    }
+
+    public override void ReadPayload(BinaryReader reader)
+    {
+        FarmerId = reader.ReadInt64();
+        TargetFloor = reader.ReadInt32();
+    }
+}
+
+public class SkullElevatorUseResponsePacket : BridgePacket
+{
+    public override byte SubOpCode => ProtocolConstants.SubOpCodes.SkullElevatorUseResponse;
+
+    public long FarmerId { get; set; }
+    public int TargetFloor { get; set; }
+    public int FeeDeducted { get; set; }
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+
+    public override void WritePayload(BinaryWriter writer)
+    {
+        writer.Write(FarmerId);
+        writer.Write(TargetFloor);
+        writer.Write(FeeDeducted);
+        writer.Write(Success);
+        writer.Write(Message);
+    }
+
+    public override void ReadPayload(BinaryReader reader)
+    {
+        FarmerId = reader.ReadInt64();
+        TargetFloor = reader.ReadInt32();
+        FeeDeducted = reader.ReadInt32();
+        Success = reader.ReadBoolean();
+        Message = reader.ReadString();
+    }
+}
+
+
+public class StarterKitItemEntry
+{
+    public string ItemId { get; set; } = string.Empty;
+    public string ItemType { get; set; } = "(O)"; // (O) for object, (BC) for bigcraftable, (T) for tool
+    public int Stack { get; set; } = 1;
+    public int Quality { get; set; } = 0;
+    public int UpgradeLevel { get; set; } = 0;
+    public bool TargetToolbelt { get; set; } = false;
+
+    public void Write(BinaryWriter writer)
+    {
+        writer.Write(ItemId);
+        writer.Write(ItemType);
+        writer.Write(Stack);
+        writer.Write(Quality);
+        writer.Write(UpgradeLevel);
+        writer.Write(TargetToolbelt);
+    }
+
+    public static StarterKitItemEntry Read(BinaryReader reader)
+    {
+        return new StarterKitItemEntry
+        {
+            ItemId = reader.ReadString(),
+            ItemType = reader.ReadString(),
+            Stack = reader.ReadInt32(),
+            Quality = reader.ReadInt32(),
+            UpgradeLevel = reader.ReadInt32(),
+            TargetToolbelt = reader.ReadBoolean()
+        };
+    }
+}
+
+public class StarterKitGrantPacket : BridgePacket
+{
+    public override byte SubOpCode => ProtocolConstants.SubOpCodes.StarterKitGrant;
+
+    public long FarmerId { get; set; }
+    public string Profession { get; set; } = string.Empty;
+    public string Season { get; set; } = "spring";
+    public List<StarterKitItemEntry> Items { get; set; } = new();
+    public string AuthSignature { get; set; } = string.Empty;
+
+    public override void WritePayload(BinaryWriter writer)
+    {
+        writer.Write(FarmerId);
+        writer.Write(Profession);
+        writer.Write(Season);
+        writer.Write(AuthSignature);
+        writer.Write(Items.Count);
+        foreach (var item in Items)
+        {
+            item.Write(writer);
+        }
+    }
+
+    public override void ReadPayload(BinaryReader reader)
+    {
+        FarmerId = reader.ReadInt64();
+        Profession = reader.ReadString();
+        Season = reader.ReadString();
+        AuthSignature = reader.ReadString();
+        int count = reader.ReadInt32();
+        Items = new List<StarterKitItemEntry>(count);
+        for (int i = 0; i < count; i++)
+        {
+            Items.Add(StarterKitItemEntry.Read(reader));
+        }
+    }
+}
+
+public class StarterKitClaimAckPacket : BridgePacket
+{
+    public override byte SubOpCode => ProtocolConstants.SubOpCodes.StarterKitClaimAck;
+
+    public long FarmerId { get; set; }
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+
+    public override void WritePayload(BinaryWriter writer)
+    {
+        writer.Write(FarmerId);
+        writer.Write(Success);
+        writer.Write(Message);
+    }
+
+    public override void ReadPayload(BinaryReader reader)
+    {
+        FarmerId = reader.ReadInt64();
+        Success = reader.ReadBoolean();
+        Message = reader.ReadString();
+    }
+}
+
+public class ProfessionBuffSyncPacket : BridgePacket
+{
+    public override byte SubOpCode => ProtocolConstants.SubOpCodes.ProfessionBuffSync;
+
+    public long FarmerId { get; set; }
+    public string Profession { get; set; } = string.Empty;
+    public int SkillLevel { get; set; }
+    public int Tier { get; set; } = 1; // 1, 2, 3
+    public int BobberBarExtraPixels { get; set; } = 0; // +16 for Fisherman
+    public float ForestSpeedBonus { get; set; } = 0f; // +0.5 for Forager Lv 5+
+    public int MinesDefenseBonus { get; set; } = 0; // +3 for Miner Lv 10
+    public int ToolStaminaDiscountPercent { get; set; } = 0; // 15-20%
+
+    public override void WritePayload(BinaryWriter writer)
+    {
+        writer.Write(FarmerId);
+        writer.Write(Profession);
+        writer.Write(SkillLevel);
+        writer.Write(Tier);
+        writer.Write(BobberBarExtraPixels);
+        writer.Write(ForestSpeedBonus);
+        writer.Write(MinesDefenseBonus);
+        writer.Write(ToolStaminaDiscountPercent);
+    }
+
+    public override void ReadPayload(BinaryReader reader)
+    {
+        FarmerId = reader.ReadInt64();
+        Profession = reader.ReadString();
+        SkillLevel = reader.ReadInt32();
+        Tier = reader.ReadInt32();
+        BobberBarExtraPixels = reader.ReadInt32();
+        ForestSpeedBonus = reader.ReadSingle();
+        MinesDefenseBonus = reader.ReadInt32();
+        ToolStaminaDiscountPercent = reader.ReadInt32();
     }
 }

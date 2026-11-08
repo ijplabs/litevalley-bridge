@@ -13,7 +13,6 @@
   "hud.visit.success": "Berkunjung ke rumah {{owner}}",
   "hud.visit.notfound": "Rumah '{{target}}' tidak ditemukan",
   "hud.visit.usage": "Gunakan: /visit <nomor_kabin_atau_nama>",
-
   "command.bug.desc": "Kirim laporan bug dengan konteks lengkap ke logs/bug-reports.jsonl\nPenggunaan: bug <pesan>",
   "command.bridge.desc": "Periksa status koneksi StardewBridge ke Headless Server",
   "command.connect.desc": "Direct connect ke server StardewHeadless\nPenggunaan: connect [ip:port] (default: 127.0.0.1:24642)",
@@ -25,7 +24,6 @@
   "command.auth.desc": "Autentikasi akun ke server\nPenggunaan: auth <password> [profesi]",
   "command.smarttools.desc": "Aktifkan atau nonaktifkan fitur SmartTools\nPenggunaan: smarttools [on|off|toggle]",
   "command.unfreeze.desc": "Paksa pemulihan kontrol pemain jika macet/beku\nPenggunaan: unfreeze",
-
   "command.bridge.connected": "[StardewBridge] Terhubung ke Server: {{server}}\n[StardewBridge] Kalender Server: Tahun {{year}} {{season}} Hari {{day}}, Jam {{time}}",
   "command.bridge.disconnected": "[StardewBridge] Tidak terhubung ke StardewHeadless Server (Bermain singleplayer atau vanilla server)",
   "command.profession.none": "[StardewBridge] Anda belum memilih profesi. Ketik 'profession <farmer|miner|fisherman|rancher|forager>' untuk memilih.",
@@ -38,8 +36,11 @@
   "command.auth.usage": "[StardewBridge] Penggunaan: auth <password> [profesi]",
   "command.smarttools.status": "[SmartTools] Status saat ini: {{status}}",
   "command.unfreeze.success": "[AntiFreeze] Kontrol pemain berhasil dipulihkan secara manual via command unfreeze.",
-
   "ui.smarttools.badge.on": "[ST: AKTIF]",
   "ui.smarttools.badge.off": "[ST: NONAKTIF]",
-  "ui.toolbelt.tooltip": "Sabuk Alat Khusus"
+  "ui.toolbelt.tooltip": "Sabuk Alat Khusus",
+  "ui.save.export.title": "Ekspor Savegame (.zip)",
+  "ui.save.export.desc": "Ekspor seluruh folder savegame kebun ini menjadi arsip .zip di folder Downloads agar siap diunggah ke LiteValley atau disimpan sebagai cadangan.",
+  "ui.save.export.success": "Savegame '{{farm}}' berhasil diekspor ke: {{file}}",
+  "ui.save.export.dialog": "Savegame kebun '{{farm}}' ({{farmer}}) berhasil diekspor ke format .zip!\n\nLokasi berkas:\n{{path}}\n\nFolder Downloads telah dibuka di File Explorer.\nAnda dapat langsung mengunggah file .zip ini ke LiteValley Dashboard."
 }

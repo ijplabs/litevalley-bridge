@@ -16,6 +16,7 @@ namespace StardewBridge.Client.UI;
 public static class VerticalToolbeltRenderer
 {
     private static IMonitor? _monitor;
+    private static IModHelper? _helper;
     private static float _transparency = 1f;
     private static Item? _hoverItem;
 
@@ -54,6 +55,7 @@ public static class VerticalToolbeltRenderer
     public static void Initialize(IMonitor monitor, IModHelper helper)
     {
         _monitor = monitor;
+        _helper = helper;
         helper.Events.Display.RenderedHud += OnRenderedHud;
         helper.Events.Display.RenderedActiveMenu += OnRenderedActiveMenu;
         helper.Events.Input.ButtonPressed += OnButtonPressed;
@@ -169,7 +171,8 @@ public static class VerticalToolbeltRenderer
 
     private static void OnButtonPressed(object? sender, ButtonPressedEventArgs e)
     {
-        if (e.Button != SButton.MouseLeft) return;
+        if (!Context.IsWorldReady || Game1.player == null) return;
+        if (e.Button != SButton.MouseLeft && e.Button != SButton.MouseRight) return;
 
         int mouseX = Game1.getOldMouseX();
         int mouseY = Game1.getOldMouseY();
@@ -177,7 +180,11 @@ public static class VerticalToolbeltRenderer
         // 1. Cek klik pada badge SmartTools [ST: ON/OFF]
         if (GetBadgeBounds().Contains(mouseX, mouseY))
         {
-            SmartToolsEngine.Toggle();
+            if (e.Button == SButton.MouseLeft)
+            {
+                _helper?.Input.Suppress(e.Button);
+                SmartToolsEngine.Toggle();
+            }
             return;
         }
 
@@ -187,28 +194,44 @@ public static class VerticalToolbeltRenderer
             var bounds = GetSlotBounds(i);
             if (!bounds.Contains(mouseX, mouseY)) continue;
 
+            _helper?.Input.Suppress(e.Button);
             int inventoryIndex = ToolbeltManager.ToolbeltStartIndex + i;
             ToolbeltManager.EnsureCapacity(Game1.player);
 
             if (Game1.activeClickableMenu == null)
             {
-                // Mode HUD: langsung pilih alat di slot ini
-                Game1.player.CurrentToolIndex = inventoryIndex;
-                if (Game1.player.ActiveObject != null)
+                if (e.Button == SButton.MouseLeft)
                 {
-                    Game1.player.showCarrying();
-                    Game1.playSound("pickUpItem");
-                }
-                else
-                {
-                    Game1.player.showNotCarrying();
-                    Game1.playSound("stoneStep");
+                    // Mode HUD: langsung pilih alat di slot ini
+                    Game1.player.CurrentToolIndex = inventoryIndex;
+                    if (Game1.player.ActiveObject != null)
+                    {
+                        Game1.player.showCarrying();
+                        Game1.playSound("pickUpItem");
+                    }
+                    else
+                    {
+                        Game1.player.showNotCarrying();
+                        Game1.playSound("stoneStep");
+                    }
                 }
                 return;
             }
             else if (Game1.activeClickableMenu is GameMenu gameMenu && gameMenu.currentTab == 0)
             {
-                // Mode Inventory Menu: swap / place / pick
+                // Mode Inventory Menu: klik kanan pasang umpan / tackle pada pancingan
+                if (e.Button == SButton.MouseRight)
+                {
+                    if (Game1.player.CursorSlotItem is StardewValley.Object baitObj && Game1.player.Items[inventoryIndex] is StardewValley.Tools.FishingRod rod)
+                    {
+                        var leftover = rod.attach(baitObj);
+                        Game1.player.CursorSlotItem = leftover;
+                        Game1.playSound("dwop");
+                    }
+                    return;
+                }
+
+                // Mode Inventory Menu: swap / place / pick (MouseLeft)
                 if (Game1.player.CursorSlotItem != null)
                 {
                     if (ToolbeltManager.IsToolbeltEligible(Game1.player.CursorSlotItem))

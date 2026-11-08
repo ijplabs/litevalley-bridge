@@ -1,3 +1,4 @@
+using StardewBridge.Client.Modules;
 using HarmonyLib;
 using StardewBridge.Client.Tools;
 using StardewBridge.Client.UI;
@@ -29,10 +30,14 @@ public class ModEntry : Mod
 
         _harmony = new Harmony(this.ModManifest.UniqueID);
 
-        // 1. Inisialisasi modul Toolbelt dan SmartTools
+        // 1. Inisialisasi modul Toolbelt, SmartTools, dan Modul Native QoL (Tahap 1)
         ToolbeltManager.Initialize(this.Monitor);
         SmartToolsEngine.Initialize(this.Monitor);
         VerticalToolbeltRenderer.Initialize(this.Monitor, helper);
+        BiggerBackpackNativeModule.Initialize(this.Monitor);
+        AutoGateController.Initialize(this.Monitor, helper);
+        SkullCavernElevatorModule.Initialize(this.Monitor, helper);
+        SaveExportMenuHandler.Initialize(this.Monitor, helper);
 
         // 2. Terapkan seluruh Harmony Patches
         ClientPatches.Apply(_harmony);
@@ -45,6 +50,7 @@ public class ModEntry : Mod
         helper.Events.GameLoop.UpdateTicked += OnUpdateTicked;
         helper.Events.GameLoop.SaveLoaded += OnSaveLoaded;
         helper.Events.GameLoop.DayStarted += OnDayStarted;
+        helper.Events.GameLoop.ReturnedToTitle += OnReturnedToTitle;
         helper.Events.Content.AssetRequested += OnAssetRequested;
         LocalizedContentManager.OnLanguageChange += OnLanguageChanged;
 
@@ -126,7 +132,15 @@ public class ModEntry : Mod
         if (Context.IsWorldReady && Game1.player != null)
         {
             var player = Game1.player;
+            bool isLegitimateAction = (player.UsingTool && player.CurrentTool is StardewValley.Tools.FishingRod) ||
+                                      player.toolHold.Value > 0 ||
+                                      player.usingSlingshot ||
+                                      player.isEating ||
+                                      Game1.fadeToBlack ||
+                                      Game1.locationRequest != null;
+
             bool isControlLocked = (!player.CanMove || player.UsingTool) &&
+                                   !isLegitimateAction &&
                                    (player.FarmerSprite == null || (!player.FarmerSprite.PauseForSingleAnimation)) &&
                                    Game1.activeClickableMenu == null &&
                                    !Game1.eventUp &&
@@ -135,11 +149,11 @@ public class ModEntry : Mod
             if (isControlLocked)
             {
                 _frozenTicksCount++;
-                if (_frozenTicksCount >= 20) // ~0.33 detik macet tanpa ada animasi/menu/event yang membenarkannya
+                if (_frozenTicksCount >= 180) // ~3 detik (180 ticks pada 60 Hz) macet sejati tanpa alasan gameplay sah
                 {
                     _frozenTicksCount = 0;
                     player.forceCanMove();
-                    this.Monitor.Log("[AntiFreeze] Terdeteksi kontrol pemain macet (CanMove=false/UsingTool=true tanpa animasi). Memulihkan pergerakan otomatis!", LogLevel.Warn);
+                    this.Monitor.Log("[AntiFreeze] Terdeteksi kontrol pemain macet sejati selama >3 detik. Memulihkan pergerakan otomatis!", LogLevel.Warn);
                 }
             }
             else
@@ -419,4 +433,13 @@ public class ModEntry : Mod
             }
         }
     }
+    private void OnReturnedToTitle(object? sender, ReturnedToTitleEventArgs e)
+    {
+        _frozenTicksCount = 0;
+        _hasTriggeredAutoConnect = false;
+        BridgeClientCore.ResetConnection();
+        Professions.ClientProfessionBuffHandler.ResetBuffs();
+        this.Monitor.Log("[StardewBridge] Kembali ke Title Screen, state koneksi dan buff profesi dibersihkan.", LogLevel.Info);
+    }
+
 }

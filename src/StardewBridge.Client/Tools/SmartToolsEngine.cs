@@ -1,3 +1,4 @@
+using StardewValley.Locations;
 using System;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
@@ -132,11 +133,15 @@ public static class SmartToolsEngine
         // 4. Objects di atas tile (Batu, Ranting, Semak liar, Artifact spot)
         if (location.Objects != null && location.Objects.TryGetValue(targetTile, out var obj) && obj != null)
         {
+            if (obj is StardewValley.Objects.Chest)
+            {
+                return SmartToolCategory.None;
+            }
             if (obj.IsTwig())
             {
                 return SmartToolCategory.Axe;
             }
-            if (obj.IsBreakableStone() || (obj.Name != null && obj.Name.Contains("Stone", StringComparison.OrdinalIgnoreCase)))
+            if (obj.IsBreakableStone() || (obj.Name != null && !obj.Name.Contains("Chest", StringComparison.OrdinalIgnoreCase) && obj.Name.Contains("Stone", StringComparison.OrdinalIgnoreCase)))
             {
                 return SmartToolCategory.Pickaxe;
             }
@@ -157,8 +162,14 @@ public static class SmartToolsEngine
             {
                 return SmartToolCategory.Scythe;
             }
-            if (tf is Tree || tf is FruitTree)
+            if (tf is Tree tree)
             {
+                if (tree.tapped.Value) return SmartToolCategory.None;
+                return SmartToolCategory.Axe;
+            }
+            if (tf is FruitTree fruitTree)
+            {
+                if (fruitTree.daysUntilMature.Value <= 0) return SmartToolCategory.None;
                 return SmartToolCategory.Axe;
             }
             if (tf is Bush)
@@ -190,10 +201,17 @@ public static class SmartToolsEngine
                 {
                     return SmartToolCategory.WateringCan;
                 }
-                // Tanah cangkul kosong belum disiram -> Watering Can
-                if (dirt.crop == null && dirt.state.Value != HoeDirt.watered)
+                // Tanah cangkul kosong belum disiram -> Watering Can (kecuali pemain sedang memegang Pickaxe untuk meratakan tanah/un-hoe)
+                if (dirt.crop == null)
                 {
-                    return SmartToolCategory.WateringCan;
+                    if (player.CurrentTool is StardewValley.Tools.Pickaxe)
+                    {
+                        return SmartToolCategory.Pickaxe;
+                    }
+                    if (dirt.state.Value != HoeDirt.watered)
+                    {
+                        return SmartToolCategory.WateringCan;
+                    }
                 }
             }
         }
@@ -220,6 +238,10 @@ public static class SmartToolsEngine
             // Tanah kosong diggable
             if (location.doesTileHaveProperty((int)targetTile.X, (int)targetTile.Y, "Diggable", "Back") != null)
             {
+                if (location is MineShaft)
+                {
+                    return SmartToolCategory.None;
+                }
                 return SmartToolCategory.Hoe;
             }
         }

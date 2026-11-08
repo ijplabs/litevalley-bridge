@@ -1,3 +1,4 @@
+using StardewBridge.Client.Modules;
 using System;
 using System.Collections.Generic;
 using System.Reflection.Emit;
@@ -32,9 +33,11 @@ public static class ClientPatches
             harmony.Patch(chatBoxEnterMethod, prefix: new HarmonyMethod(typeof(ClientPatches), nameof(ChatBoxEnter_Prefix)));
         }
 
-        // 3. Daftarkan patches Toolbelt dan SmartTools
+        // 3. Daftarkan patches Toolbelt, SmartTools, dan BiggerBackpack Native
         ToolbeltManager.ApplyPatches(harmony);
         SmartToolsEngine.ApplyPatches(harmony);
+        BiggerBackpackNativeModule.ApplyPatches(harmony);
+        Professions.ClientProfessionBuffHandler.ApplyPatches(harmony);
 
         // 4. Patch anti-freeze engine pada Game1.toolAnimationDone jika alat dilepas saat animasi
         var toolAnimationDoneMethod = AccessTools.Method(
@@ -273,15 +276,17 @@ public static class ClientPatches
     {
         try
         {
-            if (__instance.isCabin && (__instance.modData.ContainsKey("svheadless/main_estate_house") || (__instance.tileX.Value == 58 && __instance.tileY.Value == 14)))
+            if (BridgeClientCore.IsConnectedToHeadless && __instance.isCabin && 
+                (__instance.modData.ContainsKey("svheadless/main_estate_house") || (!__instance.modData.ContainsKey("svheadless/virtual_house") && !__instance.modData.ContainsKey("svheadless/lobby_cabin"))))
             {
                 var targetBuilding = FindAssignedCabin(who);
                 if (targetBuilding != null && targetBuilding.GetIndoors() is Cabin targetIndoors)
                 {
+                    who.currentLocation?.playSound("doorClose", who.Tile);
                     var entry = targetIndoors.getEntryLocation();
-                    Game1.warpFarmer(targetIndoors.NameOrUniqueName, entry.X, entry.Y, 0);
-                    __result = true;
-                    return false; // Skip original method agar tidak masuk ke kabin fisik default!
+                    Game1.warpFarmer(targetIndoors.NameOrUniqueName, entry.X, entry.Y, 0, isStructure: true);
+                    __result = false; // Mencegah doAction menjalankan warp default ke interior kabin fisik!
+                    return false;     // Lewati metode asli OnUseHumanDoor
                 }
             }
         }
@@ -297,13 +302,22 @@ public static class ClientPatches
         var farm = Game1.getFarm();
         if (farm == null) return null;
 
-        // 1. Cocokkan berdasarkan kepemilikan owner / farmhand
-        foreach (var b in farm.buildings)
+        var cabins = farm.buildings.Where(b => b.isCabin && !b.modData.ContainsKey("svheadless/lobby_cabin")).ToList();
+
+        // 0. Cek AssignedCabinIndex dari sesi autentikasi server LiteValley jika ada
+        int assignedIdx = BridgeClientCore.AssignedCabinIndex;
+        if (assignedIdx > 0 && assignedIdx <= cabins.Count)
         {
-            if (b.isCabin && !b.modData.ContainsKey("svheadless/lobby_cabin") && b.GetIndoors() is Cabin c)
+            return cabins[assignedIdx - 1];
+        }
+
+        // 1. Cocokkan berdasarkan kepemilikan owner / farmhand
+        foreach (var b in cabins)
+        {
+            if (b.GetIndoors() is Cabin c)
             {
                 if ((c.owner != null && c.owner.UniqueMultiplayerID == who.UniqueMultiplayerID) ||
-                    (false))
+                    (c.farmhandReference?.UID == who.UniqueMultiplayerID))
                 {
                     return b;
                 }
@@ -311,19 +325,16 @@ public static class ClientPatches
         }
 
         // 2. Fallback: Ambil kabin pertama yang belum berpenghuni
-        foreach (var b in farm.buildings)
+        foreach (var b in cabins)
         {
-            if (b.isCabin && !b.modData.ContainsKey("svheadless/lobby_cabin") && b.GetIndoors() is Cabin c)
+            if (b.GetIndoors() is Cabin c && !c.HasOwner)
             {
-                if (!c.HasOwner)
-                {
-                    return b;
-                }
+                return b;
             }
         }
 
         // 3. Fallback: Ambil kabin non-lobby pertama
-        return farm.buildings.FirstOrDefault(b => b.isCabin && !b.modData.ContainsKey("svheadless/lobby_cabin"));
+        return cabins.FirstOrDefault();
     }
 
     public static void VisitCabin(string targetArg)
@@ -349,7 +360,7 @@ public static class ClientPatches
         if (target != null && target.GetIndoors() is Cabin targetIndoors)
         {
             var entry = targetIndoors.getEntryLocation();
-            Game1.warpFarmer(targetIndoors.NameOrUniqueName, entry.X, entry.Y, 0);
+            Game1.warpFarmer(targetIndoors.NameOrUniqueName, entry.X, entry.Y, 0, isStructure: true);
             string ownerName = targetIndoors.owner?.Name ?? $"Kabin #{cabins.IndexOf(target) + 1}";
             Game1.addHUDMessage(new HUDMessage(I18n.Get("hud.visit.success", new { owner = ownerName }), HUDMessage.newQuest_type));
         }

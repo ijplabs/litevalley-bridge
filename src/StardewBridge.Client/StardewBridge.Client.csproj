@@ -2,20 +2,51 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
-    <Version>1.0.0</Version>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <GamePath Condition="'$(GamePath)' == ''">D:\SteamLibrary\steamapps\common\Stardew Valley</GamePath>
-    <ModFolderName>StardewBridge</ModFolderName>
-    <ModZipPath>$(MSBuildThisFileDirectory)..\..\_releases</ModZipPath>
+    <GamePath Condition="'$(GamePath)' == '' and '$(STARDEW_GAME_DIR)' != ''">$(STARDEW_GAME_DIR)</GamePath>
+    <GamePath Condition="'$(GamePath)' == '' and Exists('D:\SteamLibrary\steamapps\common\Stardew Valley\Stardew Valley.dll')">D:\SteamLibrary\steamapps\common\Stardew Valley</GamePath>
+    <GamePath Condition="'$(GamePath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\ref-assemblies\Stardew Valley.dll')">$(MSBuildThisFileDirectory)..\..\ref-assemblies</GamePath>
+    <GamePath Condition="'$(GamePath)' == ''">/data/game</GamePath>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" />
-    <PackageReference Include="Lib.Harmony" Version="2.4.3" />
     <ProjectReference Include="..\StardewHeadless.Protocol\StardewHeadless.Protocol.csproj" />
+    <PackageReference Include="Lib.Harmony" Version="2.4.3" />
+  </ItemGroup>
+
+  <!-- Reference Stardew Valley & SMAPI assemblies -->
+  <ItemGroup>
+    <Reference Include="StardewModdingAPI">
+      <HintPath>$(GamePath)\StardewModdingAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SMAPI.Toolkit.CoreInterfaces">
+      <HintPath>$(GamePath)\smapi-internal\SMAPI.Toolkit.CoreInterfaces.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Stardew Valley">
+      <HintPath>$(GamePath)\Stardew Valley.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MonoGame.Framework">
+      <HintPath>$(GamePath)\MonoGame.Framework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="StardewValley.GameData">
+      <HintPath>$(GamePath)\StardewValley.GameData.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Lidgren.Network">
+      <HintPath>$(GamePath)\Lidgren.Network.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="xTile">
+      <HintPath>$(GamePath)\xTile.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -29,5 +60,17 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <!-- Auto deploy to game Mods folder on build when Mods directory exists -->
+  <Target Name="DeployMod" AfterTargets="Build" Condition="Exists('$(GamePath)\Mods')">
+    <PropertyGroup>
+      <ModDeployDir>$(GamePath)\Mods\StardewBridge</ModDeployDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <OutputFiles Include="$(TargetDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(OutputFiles)" DestinationFiles="@(OutputFiles->'$(ModDeployDir)\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="[DeployMod] StardewBridge successfully deployed to $(ModDeployDir)" />
+  </Target>
 
 </Project>

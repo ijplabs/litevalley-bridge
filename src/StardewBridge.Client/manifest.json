@@ -1,8 +1,8 @@
 {
   "Name": "StardewBridge Client",
   "Author": "IJP Labs",
-  "Version": "1.0.0",
-  "Description": "Universal SMAPI client bridge connecting Stardew Valley to LiteValley Dedicated Servers.",
+  "Version": "0.1.0",
+  "Description": "High-performance client bridge connecting Stardew Valley to Pure Headless Server.",
   "UniqueID": "IJP.StardewBridge",
   "EntryDll": "StardewBridge.Client.dll",
   "MinimumApiVersion": "4.0.0"

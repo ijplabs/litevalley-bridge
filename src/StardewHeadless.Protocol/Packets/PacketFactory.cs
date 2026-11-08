@@ -33,6 +33,13 @@ public static class PacketFactory
             ProtocolConstants.SubOpCodes.AuthReject => new AuthRejectPacket(),
             ProtocolConstants.SubOpCodes.ClientModAudit => new ClientModAuditPacket(),
             ProtocolConstants.SubOpCodes.ClientModAuditResponse => new ClientModAuditResponsePacket(),
+            ProtocolConstants.SubOpCodes.SkullElevatorUseRequest => new SkullElevatorUseRequestPacket(),
+            ProtocolConstants.SubOpCodes.SkullElevatorUseResponse => new SkullElevatorUseResponsePacket(),
+            ProtocolConstants.SubOpCodes.StarterKitGrant => new StarterKitGrantPacket(),
+            ProtocolConstants.SubOpCodes.StarterKitClaimAck => new StarterKitClaimAckPacket(),
+            ProtocolConstants.SubOpCodes.ProfessionBuffSync => new ProfessionBuffSyncPacket(),
+            ProtocolConstants.SubOpCodes.ClientIntegrityHeartbeat => new ClientIntegrityHeartbeatPacket(),
+            ProtocolConstants.SubOpCodes.ClientIntegrityHeartbeatAck => new ClientIntegrityHeartbeatAckPacket(),
             _ => null
         };
 

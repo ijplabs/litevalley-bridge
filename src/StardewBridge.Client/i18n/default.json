@@ -13,7 +13,6 @@
   "hud.visit.success": "Visiting {{owner}}'s home",
   "hud.visit.notfound": "House '{{target}}' not found",
   "hud.visit.usage": "Usage: /visit <cabin_number_or_name>",
-
   "command.bug.desc": "Send a bug report with full context to logs/bug-reports.jsonl\nUsage: bug <message>",
   "command.bridge.desc": "Check StardewBridge connection status to Headless Server",
   "command.connect.desc": "Direct connect to StardewHeadless server\nUsage: connect [ip:port] (default: 127.0.0.1:24642)",
@@ -25,7 +24,6 @@
   "command.auth.desc": "Authenticate account to server\nUsage: auth <password> [profession]",
   "command.smarttools.desc": "Enable or disable SmartTools feature\nUsage: smarttools [on|off|toggle]",
   "command.unfreeze.desc": "Force player control recovery if stuck/frozen\nUsage: unfreeze",
-
   "command.bridge.connected": "[StardewBridge] Connected to Server: {{server}}\n[StardewBridge] Server Calendar: Year {{year}} {{season}} Day {{day}}, Time {{time}}",
   "command.bridge.disconnected": "[StardewBridge] Not connected to StardewHeadless Server (Playing singleplayer or vanilla server)",
   "command.profession.none": "[StardewBridge] You have not selected a profession yet. Type 'profession <farmer|miner|fisherman|rancher|forager>' to choose.",
@@ -38,8 +36,11 @@
   "command.auth.usage": "[StardewBridge] Usage: auth <password> [profession]",
   "command.smarttools.status": "[SmartTools] Current status: {{status}}",
   "command.unfreeze.success": "[AntiFreeze] Player controls restored manually via unfreeze command.",
-
   "ui.smarttools.badge.on": "[ST: ON]",
   "ui.smarttools.badge.off": "[ST: OFF]",
-  "ui.toolbelt.tooltip": "Dedicated Toolbelt"
+  "ui.toolbelt.tooltip": "Dedicated Toolbelt",
+  "ui.save.export.title": "Export Savegame (.zip)",
+  "ui.save.export.desc": "Export this entire farm save folder into a .zip archive in your Downloads folder, ready for LiteValley or backup.",
+  "ui.save.export.success": "Savegame '{{farm}}' successfully exported to: {{file}}",
+  "ui.save.export.dialog": "Farm savegame '{{farm}}' ({{farmer}}) successfully exported to .zip!\n\nFile location:\n{{path}}\n\nDownloads folder has been opened in File Explorer.\nYou can now upload this .zip file directly to the LiteValley Dashboard."
 }

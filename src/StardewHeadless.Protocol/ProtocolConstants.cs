@@ -57,6 +57,21 @@ public static class ProtocolConstants
         // Sub-opcodes 0x98 - 0x99 untuk Telemetri Audit Mod & Integritas Klien (docs/26)
         public const byte ClientModAudit = 0x98;
         public const byte ClientModAuditResponse = 0x99;
+
+        // Sub-opcodes 0x9A - 0x9B untuk Starter Gift Kit v2 Otoritatif Server (Tahap 3)
+        public const byte StarterKitGrant = 0x9A;
+        public const byte StarterKitClaimAck = 0x9B;
+
+        // Sub-opcodes 0x9C - 0x9D untuk Heartbeat Integritas & Anti-Cheat Berlapis (Tahap 5)
+        public const byte ClientIntegrityHeartbeat = 0x9C;
+        public const byte ClientIntegrityHeartbeatAck = 0x9D;
+
+        // Sub-opcodes 0x9E - 0x9F untuk Skull Cavern Elevator Otoritatif Server (Tahap 1)
+        public const byte SkullElevatorUseRequest = 0x9E;
+        public const byte SkullElevatorUseResponse = 0x9F;
+
+        // Sub-opcode 0xA0 untuk Sinkronisasi Buff & Perk Profesi RPG (Tahap 3)
+        public const byte ProfessionBuffSync = 0xA0;
     }
 
     /// <summary>
