@@ -2,23 +2,28 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <Version>1.1.0</Version>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <UseSmapiBuildConfig Condition="!Exists('$(MSBuildThisFileDirectory)..\..\ref-assemblies\Stardew Valley.dll') and !Exists('D:\SteamLibrary\steamapps\common\Stardew Valley\Stardew Valley.dll')">true</UseSmapiBuildConfig>
     <GamePath Condition="'$(GamePath)' == '' and '$(STARDEW_GAME_DIR)' != ''">$(STARDEW_GAME_DIR)</GamePath>
     <GamePath Condition="'$(GamePath)' == '' and Exists('D:\SteamLibrary\steamapps\common\Stardew Valley\Stardew Valley.dll')">D:\SteamLibrary\steamapps\common\Stardew Valley</GamePath>
     <GamePath Condition="'$(GamePath)' == '' and Exists('$(MSBuildThisFileDirectory)..\..\ref-assemblies\Stardew Valley.dll')">$(MSBuildThisFileDirectory)..\..\ref-assemblies</GamePath>
-    <GamePath Condition="'$(GamePath)' == ''">/data/game</GamePath>
+    <GamePath Condition="'$(GamePath)' == '' and '$(UseSmapiBuildConfig)' != 'true'">/data/game</GamePath>
+    <ModFolderName>StardewBridge</ModFolderName>
+    <ModZipPath>$(MSBuildThisFileDirectory)..\..\_releases</ModZipPath>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\StardewHeadless.Protocol\StardewHeadless.Protocol.csproj" />
     <PackageReference Include="Lib.Harmony" Version="2.4.3" />
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.4.0" Condition="'$(UseSmapiBuildConfig)' == 'true'" />
   </ItemGroup>
 
-  <!-- Reference Stardew Valley & SMAPI assemblies -->
-  <ItemGroup>
+  <!-- Reference Stardew Valley & SMAPI assemblies (Local / Monolith Mode) -->
+  <ItemGroup Condition="'$(UseSmapiBuildConfig)' != 'true'">
     <Reference Include="StardewModdingAPI">
       <HintPath>$(GamePath)\StardewModdingAPI.dll</HintPath>
       <Private>false</Private>
@@ -62,7 +67,7 @@
   </ItemGroup>
 
   <!-- Auto deploy to game Mods folder on build when Mods directory exists -->
-  <Target Name="DeployMod" AfterTargets="Build" Condition="Exists('$(GamePath)\Mods')">
+  <Target Name="DeployMod" AfterTargets="Build" Condition="'$(UseSmapiBuildConfig)' != 'true' and Exists('$(GamePath)\Mods')">
     <PropertyGroup>
       <ModDeployDir>$(GamePath)\Mods\StardewBridge</ModDeployDir>
     </PropertyGroup>
