@@ -1,7 +1,7 @@
 {
   "Name": "StardewBridge Client",
   "Author": "IJP Labs",
-  "Version": "0.2.0",
+  "Version": "0.3.0",
   "Description": "High-performance client bridge connecting Stardew Valley to Pure Headless Server.",
   "UniqueID": "IJP.StardewBridge",
   "EntryDll": "StardewBridge.Client.dll",

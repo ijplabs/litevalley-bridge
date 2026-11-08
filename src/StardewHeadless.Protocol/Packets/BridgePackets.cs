@@ -28,7 +28,7 @@ public class ClientHelloPacket : BridgePacket
     public int ProtocolVersion { get; set; } = ProtocolConstants.ProtocolVersion;
     public long FarmerId { get; set; }
     public string ClientName { get; set; } = string.Empty;
-    public string BridgeVersion { get; set; } = "0.2.0";
+    public string BridgeVersion { get; set; } = "0.3.0";
     public string? SessionToken { get; set; }
 
     public override void WritePayload(BinaryWriter writer)

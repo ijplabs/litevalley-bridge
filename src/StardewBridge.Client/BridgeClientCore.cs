@@ -114,7 +114,7 @@ public static class BridgeClientCore
                 ProtocolVersion = ProtocolConstants.ProtocolVersion,
                 FarmerId = Game1.player.UniqueMultiplayerID,
                 ClientName = Game1.player.Name,
-                BridgeVersion = "0.2.0",
+                BridgeVersion = "0.3.0",
                 SessionToken = SessionToken
             };
 
